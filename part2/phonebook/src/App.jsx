@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react'
-import personsService from './services/persons'
 
 const Person = ({name, number, handleClick}) => 
 <>
