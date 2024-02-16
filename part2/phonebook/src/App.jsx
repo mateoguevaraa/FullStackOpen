@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react'
-import axios from 'axios'
 import personsService from './services/persons'
 
 const Person = ({name, number, handleClick}) => 
@@ -27,11 +26,57 @@ const PersonForm = ({newName, newPhone, handleNameChange, handlePhoneChange, add
 </form>
 </>
 
+const NotificationSuccess = ({ message }) => {
+  const notificationStyle = {
+    color: 'green',
+    background: 'lightgrey',
+    fontSize: '20',
+    borderStyle: 'solid',
+    borderRadius: 5,
+    padding: 10,
+    marginBottom: 10
+  }
+
+  if (message === null) {
+    return null
+  }
+
+  return (
+    <div className="error" style={notificationStyle}>
+      {message}
+    </div>
+  )
+}
+
+const NotificationError = ({ message }) => {
+  const notificationStyle = {
+    color: 'red',
+    background: 'lightgrey',
+    fontSize: '20',
+    borderStyle: 'solid',
+    borderRadius: 5,
+    padding: 10,
+    marginBottom: 10
+  }
+
+  if (message === null) {
+    return null
+  }
+
+  return (
+    <div className="error" style={notificationStyle}>
+      {message}
+    </div>
+  )
+}
+
 const App = () => {
   const [persons, setPersons] = useState([]) 
   const [newName, setNewName] = useState('')
   const [newPhone, setNewPhone] = useState('')
   const [filter, setFilter] = useState('')
+  const [successMessage, setSuccessMessage] = useState(null)
+  const [errorMessage, setErrorMessage] = useState(null)
 
   useEffect(() => {
     personsService
@@ -73,8 +118,21 @@ const App = () => {
         console.log(updatedPerson)
         personsService
         .updatePhone(id, updatedPerson)
-        .then(response =>
-          setPersons(persons.map(person => person.id !== id ? person : response.data)))
+        .then(response => {
+          setPersons(persons.map(person => person.id !== id ? person : response.data))
+          setSuccessMessage(`${newName} phone updated successfuly!`)
+          setTimeout(() => {
+            setSuccessMessage(null)},
+            5000)
+          }
+        )
+        .catch((error, repeatedPerson) => {
+          console.log('error');
+          setErrorMessage(`The information of ${newName} has already been removed from server.`)
+          setTimeout(() => {
+            setErrorMessage(null)},
+            5000)
+        })
       }
       else
       {
@@ -88,7 +146,7 @@ const App = () => {
     }
     else 
     {
-      const lastId = parseInt(persons[persons.length - 1].id) 
+      const lastId = persons.length === 0? 0 : parseInt(persons[persons.length - 1].id) 
       const id = (lastId + 1).toString()
       const NewPerson = {name: newName, number: newPhone, id}
 
@@ -96,6 +154,10 @@ const App = () => {
       .addPerson(NewPerson)
       .then(returnedPerson => {
         setPersons(persons.concat(returnedPerson))
+        setSuccessMessage(`${newName} added succesfully!`)
+        setTimeout(() => {
+          setSuccessMessage(null)},
+          5000)
         setNewName('')
         setNewPhone('')
       })
@@ -105,16 +167,31 @@ const App = () => {
   const handleDeletePerson = (person) => {
     if (window.confirm(`Delete ${person.name}?`)) {
       personsService
-      .deletePerson(person.id)
-      .then(() => personsService.getAll())
-      .then(returnedPersons =>
-        setPersons(returnedPersons))
+        .deletePerson(person.id)
+        .then(() => {
+          return personsService.getAll()
+        })
+        .then((returnedPersons) => {
+          setPersons(returnedPersons);
+          setSuccessMessage(`${person.name} deleted successfully!`);
+          setTimeout(() => {
+            setSuccessMessage(null);
+          }, 5000);
+        })
+        .catch((error) => {
+            console.log('error');
+            setErrorMessage(`The information of ${person.name} has already been removed.`);
+        })
     }
-  }
+  };
+  
+  
 
   return (
     <div>
       <h2>Phonebook</h2>
+      <NotificationSuccess message={successMessage} />
+      <NotificationError message={errorMessage} />
       <Filter value={filter} handleClick={handleFilterChange} />
       <h2>Add a new</h2>
       <PersonForm newName={newName} newPhone={newPhone} handleNameChange={handleNameChange} handlePhoneChange={handlePhoneChange} addPerson={addPerson}/>
