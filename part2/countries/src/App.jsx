@@ -1,6 +1,11 @@
 import { useState, useEffect } from 'react'
 import axios from 'axios'
 
+const api_key = import.meta.env.VITE_SOME_KEY
+
+const baseUrl = 'https://studies.cs.helsinki.fi/restcountries/api'
+const baseWeatherUrl = 'https://api.openweathermap.org/data/2.5/weather?q='
+
 const Message = ({text}) => {
   return (
     <>
@@ -17,23 +22,53 @@ const CountryName = ({name}) => {
   )
 }
 
-const CountryInfo = ({country}) => {
-  if (country) {
-    const languages = Object.values(country.languages)
-    return (
-      <>
+const Button = ({text, handleClick}) => {
+  return (
+    <><button onClick={handleClick}>{text}</button></>
+  )
+}
+
+const CountryInfo = ({ country }) => {
+  const [weatherInfo, setWeatherInfo] = useState(null);
+
+  useEffect(() => {
+    if (country) {
+      axios
+        .get(`${baseWeatherUrl}${country.capital}&appid=${api_key}&units=metric`)
+        .then((response) => {
+          setWeatherInfo(response.data);
+        })
+        .catch((error) => {
+          console.error('Error fetching weather data:', error);
+        });
+    }
+  }, [country]);
+
+  if (!country) return null;
+  return (
+    <>
       <h1><strong>{country.name.common}</strong></h1>
       <p>capital {country.capital}</p>
       <p>area {country.area}</p>
       <p><strong>languages</strong></p>
       <ul>
-        {languages.map(language => <li key={language}>{language}</li>)}
+        {Object.values(country.languages).map((language, index) => (
+          <li key={index}>{language}</li>
+        ))}
       </ul>
-      <img src={country.flags.png} alt={`Flag of ${country.name.common}`}/>
-      </>
-    )
-  }
-}
+      <img src={country.flags.png} alt={country.flags.alt} />
+      <h2>{`Weather in ${country.capital}`}</h2>
+      {weatherInfo && (
+        <>
+          <p>temperature {weatherInfo.main.temp} Celsius</p>
+          <img src={`https://openweathermap.org/img/wn/${weatherInfo.weather[0].icon}.png`} alt={weatherInfo.weather[0].description} />
+          <p>wind {weatherInfo.wind.speed} m/s</p>
+        </>
+      )}
+    </>
+  );
+};
+
 
 const App = () => {
   const [countryInput, setCountryInput] = useState(null)
@@ -41,7 +76,6 @@ const App = () => {
   const [message, setMessage] = useState('')
   const [country, setCountry] = useState(null)
 
-  const baseUrl = 'https://studies.cs.helsinki.fi/restcountries/api'
 
   useEffect(() => {
     if (countryInput) {
@@ -76,18 +110,30 @@ const App = () => {
     setCountryInput(event.target.value)
   }
 
+  const handleShow = (CountryName) => {
+    axios.get(`${baseUrl}/name/${CountryName}`)
+    .then(response => {
+      setCountry(response.data)
+      setCountryList([])
+      setCountryInput(null)
+    })
+  }
+
   return (
     <>
       <div>
         find countries<input onChange={handleCountryChange}></input>
       </div>
-      <div>
+
         {  
-          countryList.map(country => <CountryName name={country.name.common} key={country.name.common} />)
+          countryList.map((country) =>
+          <div key={country.name.common} style={{ display: 'flex', alignItems: 'center', marginBottom: 5 }}>
+          <CountryName name={country.name.common} key={country.name.common} />
+          <Button text='show' handleClick={() => handleShow(country.name.common)} />
+          </div>)
         }
         <Message text={message} />
         <CountryInfo country={country} key={country ? country.name.common : null}/>
-      </div>
     </>
   )
 }
